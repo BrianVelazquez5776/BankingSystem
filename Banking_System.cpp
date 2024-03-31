@@ -101,7 +101,7 @@ void create_account()
 {
     Bank obj;
     ofstream file;
-    file.open("database.dat", ios::binary | ios::app);
+    file.open("newdatabase.dat", ios::binary | ios::app);
     obj.new_account();
     file.write(reinterpret_cast<char *> (&obj), sizeof(Bank));
     file.close();
