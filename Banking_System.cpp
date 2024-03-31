@@ -5,7 +5,6 @@
 #include<cctype>
 #include<iomanip>
 
-
 using namespace std;
 
 class Bank
@@ -19,9 +18,11 @@ public:
     void show_account() const;
     void modify_account();
     void report() const;
-    void deposit(int);
-    void withdraw(int);
+    void deposit(float);
+    void withdraw(float);
     int return_accountnum() const;
+    int return_balance() const;
+
 };
 
 
@@ -67,12 +68,12 @@ void Bank::report() const
     cout << account_number << setw(10) << " " << name << setw(10) << " " << type << setw(10) << " " << balance << endl;
 }
 
-void Bank::deposit(int n)
+void Bank::deposit(float n)
 {
     balance += n;
 }
 
-void Bank::withdraw(int n)
+void Bank::withdraw(float n)
 {
     balance -= n;
 }
@@ -82,10 +83,17 @@ int Bank::return_accountnum() const
     return account_number;
 }
 
+int Bank::return_balance() const {
+    return balance;
+}
+
+
+
 void create_account(); // creates a new account
 void change_account(int); // modifies a specific user's account
 void display_account(int); // displays a specific account
 void delete_account(int);
+void account_actions(int, int);
 void display_all_accounts();
 
 
@@ -93,7 +101,7 @@ void create_account()
 {
     Bank obj;
     ofstream file;
-    file.open("newdatabase.dat", ios::binary | ios::app);
+    file.open("database.dat", ios::binary | ios::app);
     obj.new_account();
     file.write(reinterpret_cast<char *> (&obj), sizeof(Bank));
     file.close();
@@ -189,6 +197,57 @@ void display_account(int n)
     }
 }
 
+void account_actions(int n, int option)
+{
+    float test_balance, amount;
+    bool flag = false;
+    Bank obj;
+    fstream file;
+    file.open("newdatabase.dat", ios::binary | ios::in | ios::out);
+    if(!file)
+    {
+        cout << "File could not be opened." << endl;
+        return;
+    }
+    while(!file.eof() && flag == false)
+    {
+        file.read(reinterpret_cast<char *> (&obj), sizeof(Bank));
+        if(obj.return_accountnum() == n)
+        {
+            obj.show_account();
+            if(option == 1)
+            {
+                cout << "\nDepositing Amount." << endl;
+                cout << "Please enter the amount you would like to deposit: $";
+                cin >> amount;
+                obj.deposit(amount);
+            }
+            if(option == 2)
+            {
+                cout << "\nWithdrawing Amount." << endl;
+                cout << "Please enter the amount you would like to withdraw: $";
+                cin >> amount;
+                test_balance = obj.return_balance() - amount;
+                if (test_balance < 100)
+                {
+                    cout << "Unable to withdraw. Insufficient amount available. " << endl;
+                    return;
+                }
+                else
+                {
+                    obj.withdraw(amount);
+                }
+
+            }
+            int position = (-1) * static_cast<int>(sizeof(obj));
+            file.seekp(position, ios::cur);
+            file.write(reinterpret_cast<char *> (&obj), sizeof(Bank));
+            cout << "Balance was successfully updated." << endl;
+            flag = true;
+        }
+    }
+}
+
 void display_all_accounts()
 {
     Bank obj;
@@ -221,6 +280,8 @@ int main()
         cout << "\n 3. Modify User Details";
         cout << "\n 4. Delete Account";
         cout << "\n 5. Show All Accounts";
+        cout << "\n 6. Deposit into Account";
+        cout << "\n 7. Withdraw from Account";
         cout << "\n Enter Your Choice : ";
         cin >> choice;
         switch(choice)
@@ -246,6 +307,16 @@ int main()
             case 5:
                 display_all_accounts();
                 break;
+            case 6:
+                cout << "Please enter your account number: #";
+                cin >> n;
+                account_actions(n, 1);
+                break;
+            case 7:
+                cout << "Please enter your account number: #";
+                cin >> n;
+                account_actions(n, 2);
+                break;
             case 10:
                 cout << "Thanks for your time. ";
             default:
@@ -256,3 +327,14 @@ int main()
     }while(choice != 10);
     return 0;
 }
+
+// security questions
+// credit cards/debit cards? requesting limit raise
+// loan center
+// payment center
+// currency exchange
+// file for deposit and withdraw dates and timestamps
+// admin page
+
+
+
