@@ -7,20 +7,50 @@
 
 using namespace std;
 
+struct TransactionRecord
+{
+    time_t timestamp;
+    int account_number;
+    char transaction_type;
+    float amount;
+};
+
+void write_transaction_log(int account_number, char transaction_type, float amount)
+{
+    TransactionRecord record;
+    record.timestamp = time(0);
+    record.account_number = account_number;
+    record.transaction_type = transaction_type;
+    record.amount = amount;
+
+    ofstream log_file("transaction_logs1.dat", ios::binary | ios::app);
+    if (log_file.is_open())
+    {
+        log_file.write(reinterpret_cast<const char*>(&record), sizeof(TransactionRecord));
+        log_file.close();
+    }
+    else
+    {
+        cout << "Unable to open transaction log file." << endl;
+    }
+}
+
 class Bank {
 public:
     char name[40];
     char type[40];
-    int pin, account_number, request;
+    int pin, account_number;
+    char request = 'N', frozen = 'N';
     float balance;
     void new_account();
     void show_account() const;
     void modify_account();
     void report() const;
-    void deposit(float);
-    void withdraw(float);
+    void deposit(float, int);
+    void withdraw(float, int);
     int return_accountnum() const;
     int return_balance() const;
+    char return_frozen() const;
     int return_pin () const;
 
 };
@@ -60,15 +90,32 @@ void Bank::show_account() const {
 }
 
 void Bank::report() const {
-    cout << account_number << setw(10) << " " << name << setw(10) << " " << type << setw(10) << " " << balance << setw(10) << " " << request << endl;
+    cout << account_number << setw(10) << " " << name << setw(10) << " " << type << setw(10) << " " << balance << setw(10) << " " << request << setw(10) << " " << frozen << endl;
 }
 
-void Bank::deposit(float n) {
+void Bank::deposit(float n, int option) {
     balance += n;
+    if (option == 1)
+    {
+        write_transaction_log(account_number, 'D', n);
+    }
+    else
+    {
+        write_transaction_log(account_number, 'R', n); // R receiving user
+    }
+
 }
 
-void Bank::withdraw(float n) {
+void Bank::withdraw(float n, int option) {
     balance -= n;
+    if (option == 1)
+    {
+        write_transaction_log(account_number, 'W', n);
+    }
+    else
+    {
+        write_transaction_log(account_number, 'S', n); // S for sender
+    }
 }
 
 int Bank::return_accountnum() const {
@@ -84,18 +131,28 @@ int Bank::return_pin() const
     return pin;
 }
 
+char Bank::return_frozen () const
+{
+    return frozen;
+}
+
 void create_account(); // creates a new account
 void change_account(int); // modifies a specific user's account
 void display_account(int); // displays a specific account
 void delete_account(int);
 void account_actions(int, int);
+void money_transfer(int);
 void display_all_accounts();
 void sign_in_menu(); // function for sign-in menu
 void verify_user(int, int);
 void account_menu(int);
 void request_account_deletion(int);
+void account_suspension(int);
 void verify_admin(int, string);
 void admin_menu();
+void write_transaction_log(int, char, float);
+void display_transaction_logs(int);
+
 
 
 void create_account() {
@@ -149,7 +206,8 @@ void delete_account(int n)
     file2.open("temp_newdatabase.dat", ios::binary); // creates a temp file that used to write
     file.seekg(0, ios::beg); // moves the file pointer to the beginning of the file
     while (file.read(reinterpret_cast<char *> (&obj), sizeof(Bank))) {
-        if (obj.return_accountnum() != n) {
+        if (obj.return_accountnum() != n)
+        {
             file2.write(reinterpret_cast<char *> (&obj), sizeof(Bank));
         }
     }
@@ -184,7 +242,8 @@ void display_account(int n)
     }
 }
 
-void account_actions(int n, int option) {
+void account_actions(int n, int option)
+{
     float test_balance, amount;
     bool flag = false;
     Bank obj;
@@ -194,29 +253,34 @@ void account_actions(int n, int option) {
         cout << "File could not be opened." << endl;
         return;
     }
-    while (!file.eof() && flag == false) {
+    while (!file.eof() && flag == false)
+    {
         file.read(reinterpret_cast<char *> (&obj), sizeof(Bank));
         if (obj.return_accountnum() == n)
         {
             obj.show_account();
-            if (option == 1) {
+            if (option == 1)
+            {
                 cout << "\nDepositing Amount." << endl;
                 cout << "Please enter the amount you would like to deposit: $";
                 cin >> amount;
-                obj.deposit(amount);
+                obj.deposit(amount, 1);
             }
-            if (option == 2) {
+            if (option == 2)
+            {
                 cout << "\nWithdrawing Amount." << endl;
                 cout << "Please enter the amount you would like to withdraw: $";
                 cin >> amount;
                 test_balance = obj.return_balance() - amount;
-                if (test_balance < 100) {
+                if (test_balance < 100)
+                {
                     cout << "Unable to withdraw. Insufficient amount available. " << endl;
                     return;
-                } else {
-                    obj.withdraw(amount);
                 }
-
+                else
+                {
+                    obj.withdraw(amount,1);
+                }
             }
             int position = (-1) * static_cast<int>(sizeof(obj));
             file.seekp(position, ios::cur);
@@ -226,6 +290,96 @@ void account_actions(int n, int option) {
         }
     }
 }
+
+void money_transfer(int sender_id)
+{
+    int r_id;
+    float amount, test_balance;
+    bool s_flag = false, r_flag = false;
+    Bank s_obj, r_obj;
+    fstream file;
+    file.open("newdatabase.dat", ios::binary | ios::in | ios::out);
+    if (!file)
+    {
+        cout << "File could not be opened." << endl;
+        return;
+    }
+
+    while((!file.eof()) && (s_flag == false))
+    {
+        file.read(reinterpret_cast<char *> (&s_obj), sizeof(Bank));
+        if(s_obj.return_accountnum() == sender_id)
+        {
+            s_obj.show_account();
+            s_flag = true;
+        }
+    }
+
+    if(!s_flag)
+    {
+        cout << "Sender account was not found." << endl;
+        file.close();
+        return;
+    }
+
+    cout << "\nPlease enter the account number of the receiving user: #";
+    cin >> r_id;
+    while((!file.eof()) && (r_flag == false))
+    {
+        file.read(reinterpret_cast<char *> (&r_obj), sizeof(Bank));
+        if (r_obj.return_accountnum() == r_id)
+        {
+            cout << "\nSending to " << r_obj.name << ".";
+            r_flag = true;
+        }
+    }
+
+    if(!r_flag)
+    {
+        cout << "Canceling Transaction...Receiving user not found.";
+        file.close();
+        return;
+    }
+
+    cout << "How much would you like to send to " << r_obj.name << "? $";
+    cin >> amount;
+    test_balance = s_obj.return_balance() - amount;
+    if(test_balance < 100)
+    {
+        cout << "Sender has insufficient funds.";
+    }
+    else
+    {
+        r_obj.deposit(amount,2);
+        int r_position = (-1) * static_cast<int>(sizeof(r_obj));
+        file.seekp(r_position, ios::cur);
+        file.write(reinterpret_cast<char *> (&r_obj), sizeof(Bank));
+        cout << "\nFunds have been transferred.";
+    }
+    file.close();
+
+    file.open("newdatabase.dat", ios::binary | ios::in | ios::out);
+    if (!file)
+    {
+        cout << "File could not be opened." << endl;
+        return;
+    }
+    while((!file.eof()) && (s_flag == true))
+    {
+        file.read(reinterpret_cast<char *> (&s_obj), sizeof(Bank));
+        if(s_obj.return_accountnum() == sender_id)
+        {
+            s_obj.withdraw(amount,2);
+            int s_position = (-1) * static_cast<int>(sizeof(s_obj));
+            file.seekp(s_position, ios::cur);
+            file.write(reinterpret_cast<char *> (&s_obj), sizeof(Bank));
+        }
+    }
+    file.close();
+
+}
+
+
 
 void display_all_accounts()
 {
@@ -298,7 +452,7 @@ void verify_user(int ac_num, int pin)
         return;
     }
     while (file.read(reinterpret_cast<char *> (&obj), sizeof(Bank))) {
-        if ((obj.return_accountnum() == ac_num) && (obj.return_pin() == pin))
+        if ((obj.return_accountnum() == ac_num) && (obj.return_pin() == pin) && (obj.return_frozen() == 'N'))
         {
             cout << "\nHello " << obj.name << "! Please select one of the following.";
             account_menu(ac_num);
@@ -309,7 +463,7 @@ void verify_user(int ac_num, int pin)
     file.close();
     if (flag == false)
     {
-        cout << "\n\nAccount Number does not exist";
+        cout << "\n\nAccount Number might not exist, pin might be incorrect or even be suspended.";
     }
 
 }
@@ -329,7 +483,7 @@ void request_account_deletion(int id)
 
         if (obj.return_accountnum() == id)
         {
-            obj.request = 1; // Update the request variable
+            obj.request = 'Y'; // Update the request variable
             int position = (-1) * static_cast<int>(sizeof(obj));
             file.seekp(position, ios::cur);
             file.write(reinterpret_cast<char *>(&obj), sizeof(Bank)); // Write the modified object back to the file
@@ -344,46 +498,37 @@ void request_account_deletion(int id)
     }
 }
 
-void account_menu(int id)
+void account_suspension(int id)
 {
     Bank obj;
-    int choice;
-    do {
-        cout << "\n 1. Account Details";
-        cout << "\n 2. Modify User Details";
-        cout << "\n 3. Request Account Deletion";
-        cout << "\n 4. Deposit into Account";
-        cout << "\n 5. Withdraw from Account";
-        cout << "\n 6. Log out";
-        cout << "\n Enter Your Choice : ";
-        cin >> choice;
-        switch (choice)
+    fstream file;
+    file.open("newdatabase.dat", ios::binary | ios::in | ios::out);
+    if (!file)
+    {
+        cout << "File could not be opened." << endl;
+        return;
+    }
+    bool flag = false;
+    cout << "\nPlease note that suspending your account will make it inaccessible.";
+    while (file.read(reinterpret_cast<char *>(&obj), sizeof(Bank))) {
+
+        if (obj.return_accountnum() == id)
         {
-            case 1:
-                display_account(id);
-                break;
-            case 2:
-                change_account(id);
-                break;
-            case 3:
-                request_account_deletion(id);
-                break;
-            case 4:
-                account_actions(id, 1);
-                break;
-            case 5:
-                account_actions(id, 2);
-                break;
-            case 6:
-                cout << "Logging out...";
-                sign_in_menu();
-            default:
-                cout << "Error: Invalid input. Try again.";
-            }
-            cin.ignore(); // Clear input buffer
-            cin.get(); // Wait for user to press enter
-        } while (choice != 7);
+            obj.frozen = 'Y'; // Update the request variable
+            int position = (-1) * static_cast<int>(sizeof(obj));
+            file.seekp(position, ios::cur);
+            file.write(reinterpret_cast<char *>(&obj), sizeof(Bank)); // Write the modified object back to the file
+            flag = true;
+            break;
+        }
+    }
+    file.close();
+    if (!flag)
+    {
+        cout << "\nAccount Number does not exist";
+    }
 }
+
 
 void verify_admin(int admin_n, string admin_p)
 {
@@ -396,6 +541,110 @@ void verify_admin(int admin_n, string admin_p)
         cout << "Oops... Looks like something went wrong.";
         return;
     }
+}
+
+void display_transaction_logs(int account_number = -1)
+{
+    ifstream log_file("transaction_logs1.dat", ios::binary);
+    if (log_file.is_open())
+    {
+        TransactionRecord record;
+        if (account_number != -1)
+        {
+            cout << "\nRecent Transactions for Account Number: #" << account_number << endl;
+        }
+        else
+        {
+            cout << "\nTransaction Logs:" << endl;
+        }
+        bool found_transactions = false;
+        while (log_file.read(reinterpret_cast<char*>(&record), sizeof(TransactionRecord)))
+        {
+            if (account_number == -1 || record.account_number == account_number)
+            {
+                cout << put_time(localtime(&record.timestamp), "%Y-%m-%d %H:%M:%S") << setw(5) << " " << record.account_number << setw(5) << " " << record.transaction_type;
+                if (record.transaction_type == 'W' || record.transaction_type == 'S')
+                {
+                    cout << setw(5) << " -" << "$" << record.amount << endl; // Add subtraction symbol for withdrawal
+                }
+                else
+                {
+                    cout << setw(5) << " " << "$" << record.amount << endl;
+                }
+                found_transactions = true;
+            }
+        }
+        if (!found_transactions)
+        {
+            if (account_number != -1)
+            {
+                cout << "No recent transactions found for Account Number: #" << account_number << endl;
+            }
+            else
+            {
+                cout << "No transaction logs found." << endl;
+            }
+        }
+        log_file.close();
+    }
+    else
+    {
+        cout << "Unable to open transaction log file." << endl;
+        return;
+    }
+}
+
+void account_menu(int id)
+{
+    int choice;
+    do {
+        cout << "\n 1. Account Details";
+        cout << "\n 2. Modify User Details";
+        cout << "\n 3. Deposit into Account";
+        cout << "\n 4. Withdraw from Account";
+        cout << "\n 5. Transfer to another user";
+        cout << "\n 6. View your bank statements";
+        cout << "\n 7. Request Account Deletion";
+        cout << "\n 8. Freeze Account";
+        cout << "\n 9. Log out";
+        cout << "\n Enter Your Choice : ";
+        cin >> choice;
+        switch (choice)
+        {
+            case 1:
+                display_account(id);
+                break;
+            case 2:
+                change_account(id);
+                break;
+            case 3:
+                account_actions(id, 1);
+                break;
+            case 4:
+                account_actions(id, 2);
+                break;
+            case 5:
+                money_transfer(id);
+                break;
+            case 6:
+                display_transaction_logs(id);
+                break;
+            case 7:
+                request_account_deletion(id);
+                sign_in_menu();
+                break;
+            case 8:
+                account_suspension(id);
+                break;
+            case 9:
+                cout << "Logging out...";
+                sign_in_menu();
+            default:
+                cout << "Error: Invalid input. Try again.";
+        }
+        cin.ignore(); // Clear input buffer
+        cin.get(); // Wait for user to press enter
+    } while (choice != 9);
 }
 
 void admin_menu()
@@ -424,6 +673,9 @@ void admin_menu()
                 cout << "\nLogging out...";
                 sign_in_menu();
                 break;
+            case 4:
+                display_transaction_logs();
+                break;
             default:
                 cout << "Error: Invalid input. Try again.";
         }
@@ -432,8 +684,6 @@ void admin_menu()
     }while(choice != 7);
 
 }
-
-
 
 int main()
 {
