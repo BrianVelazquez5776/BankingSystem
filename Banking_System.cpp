@@ -4,6 +4,7 @@
 #include <ctime>
 #include <cctype>
 #include <iomanip>
+#include <string.h>
 
 using namespace std;
 
@@ -41,6 +42,7 @@ public:
     char type[40];
     int pin, account_number;
     char request = 'N', frozen = 'N';
+    char answer1[40], answer2[40], answer3[40];
     float balance;
     void new_account();
     void show_account() const;
@@ -68,21 +70,25 @@ void Bank::new_account() {
     cin >> pin;
     cout << "\nEnter a deposit: ";
     cin >> balance;
+    cout << "\n For recovery purposes, please answer the following questions:";
+    cout << "\n What city were you born in? :";
+    cin.ignore();
+    cin.getline(answer1, 40);
+    cout << "\nWhat is the last name of your favorite elementary school teacher? :";
+    cin.getline(answer2,40);
+    cout << "\nWhat was the first film you watched in theaters? :";
+    cin.getline(answer3,40);
     cout << "\n Account was created successfully.";
 }
 
-void Bank::modify_account() {
-    cout << "\n\n Enter Your New Name: ";
-    cin.ignore();
-    cin.getline(name, 40);
-    cout << "\n Enter the new type of the account (Checkings/Savings): ";
-    cin >> type;
+void Bank::modify_account()
+{
     cout << "Enter a new pin for your account {5 digits}: ";
     cin >> pin;
-
 }
 
-void Bank::show_account() const {
+void Bank::show_account() const
+{
     cout << "\nAccount No. : #" << account_number;
     cout << "\nAccount Holder Name : " << name;
     cout << "\nType of Account : " << type;
@@ -148,6 +154,7 @@ void verify_user(int, int);
 void account_menu(int);
 void request_account_deletion(int);
 void account_suspension(int);
+void recover_account();
 void verify_admin(int, string);
 void admin_menu();
 void write_transaction_log(int, char, float);
@@ -408,7 +415,8 @@ void sign_in_menu()
         cout << "\n Welcome to the ATM Management System";
         cout << "\n 1. Sign In";
         cout << "\n 2. Create New Account";
-        cout << "\n 3. Exit";
+        cout << "\n 3. Recover Account";
+        cout << "\n 4. Exit";
         cout << "\n Enter Your Choice : ";
         cin >> choice;
         switch (choice) {
@@ -423,6 +431,9 @@ void sign_in_menu()
                 create_account();
                 break;
             case 3:
+                recover_account();
+                break;
+            case 4:
                 cout << "Exiting program.";
                 exit(0);
             case 33050203:
@@ -437,7 +448,7 @@ void sign_in_menu()
         }
         cin.ignore(); // Clear input buffer
         cin.get(); // Wait for user to press enter
-    } while (choice != 3);
+    } while (choice != 4);
 }
 
 void verify_user(int ac_num, int pin)
@@ -529,7 +540,6 @@ void account_suspension(int id)
     }
 }
 
-
 void verify_admin(int admin_n, string admin_p)
 {
     if((admin_n == 101) && (admin_p == "test"))
@@ -540,6 +550,66 @@ void verify_admin(int admin_n, string admin_p)
     {
         cout << "Oops... Looks like something went wrong.";
         return;
+    }
+}
+
+bool verify_recovery(const Bank& obj)
+{
+    char answer[40];
+    cout << "Question 1: What city were you born in? : ";
+    cin.ignore();
+    cin.getline(answer, 40);
+    if(strcmp(answer, obj.answer1) != 0)
+    {
+        return false;
+    }
+    cout << "Question 2: What is the last name of your favorite elementary school teacher? : ";
+    cin.getline(answer, 40);
+    if (strcmp(answer, obj.answer2) != 0)
+    {
+        return false;
+    }
+    cout << "Question 3: What was the first film you watched in theaters? :";
+    cin.getline(answer, 40);
+    if (strcmp(answer, obj.answer3) != 0)
+    {
+        return false;
+    }
+    return true;
+}
+
+void recover_account()
+{
+    int ac_num;
+    bool flag = false;
+    Bank obj;
+    fstream file;
+    file.open("newdatabase.dat", ios::binary | ios::in | ios::out);
+    if (!file) {
+        cout << "File Could Not Be Opened.";
+        return;
+    }
+
+    cout << "Please enter your account number: #";
+    cin >> ac_num;
+    while (file.read(reinterpret_cast<char *>(&obj), sizeof(Bank))) {
+        if (obj.return_accountnum() == ac_num)
+        {
+            flag = true;
+            cout << "Answer the security questions to recover your account:" << endl;
+            if (verify_recovery(obj))
+            {
+                obj.modify_account();
+                int position = (-1) * static_cast<int>(sizeof(Bank));
+                file.seekp(position, ios::cur);
+                file.write(reinterpret_cast<char *>(&obj), sizeof(Bank));
+            }
+            else
+            {
+                cout << "Incorrect answers to security questions." << endl;
+            }
+            break;
+        }
     }
 }
 
@@ -599,14 +669,13 @@ void account_menu(int id)
     int choice;
     do {
         cout << "\n 1. Account Details";
-        cout << "\n 2. Modify User Details";
-        cout << "\n 3. Deposit into Account";
-        cout << "\n 4. Withdraw from Account";
-        cout << "\n 5. Transfer to another user";
-        cout << "\n 6. View your bank statements";
-        cout << "\n 7. Request Account Deletion";
-        cout << "\n 8. Freeze Account";
-        cout << "\n 9. Log out";
+        cout << "\n 2. Deposit into Account";
+        cout << "\n 3. Withdraw from Account";
+        cout << "\n 4. Transfer to another user";
+        cout << "\n 5. View your bank statements";
+        cout << "\n 6. Request Account Deletion";
+        cout << "\n 7. Freeze Account";
+        cout << "\n 8. Log out";
         cout << "\n Enter Your Choice : ";
         cin >> choice;
         switch (choice)
@@ -615,28 +684,25 @@ void account_menu(int id)
                 display_account(id);
                 break;
             case 2:
-                change_account(id);
-                break;
-            case 3:
                 account_actions(id, 1);
                 break;
-            case 4:
+            case 3:
                 account_actions(id, 2);
                 break;
-            case 5:
+            case 4:
                 money_transfer(id);
                 break;
-            case 6:
+            case 5:
                 display_transaction_logs(id);
                 break;
-            case 7:
+            case 6:
                 request_account_deletion(id);
                 sign_in_menu();
                 break;
-            case 8:
+            case 7:
                 account_suspension(id);
                 break;
-            case 9:
+            case 8:
                 cout << "Logging out...";
                 sign_in_menu();
             default:
@@ -644,7 +710,7 @@ void account_menu(int id)
         }
         cin.ignore(); // Clear input buffer
         cin.get(); // Wait for user to press enter
-    } while (choice != 9);
+    } while (choice != 8);
 }
 
 void admin_menu()
