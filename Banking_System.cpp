@@ -5,6 +5,7 @@
 #include <cctype>
 #include <iomanip>
 #include <string.h>
+#include <limits>
 
 using namespace std;
 
@@ -39,7 +40,7 @@ void write_transaction_log(int account_number, char transaction_type, float amou
 class Bank {
 public:
     char name[40];
-    char type[40];
+    char type[20];
     int pin, account_number;
     char request = 'N', frozen = 'N';
     char answer1[40], answer2[40], answer3[40];
@@ -57,27 +58,78 @@ public:
 
 };
 
-void Bank::new_account() {
+void Bank::new_account()
+{
+    bool valid_type = false;
     srand(static_cast<unsigned int>(time(nullptr)));
     account_number = rand() % 900000 + 100000;
     cout << "\nYour Account Number: #" << account_number;
     cout << "\n\n Enter Your Name: ";
     cin.ignore();
     cin.getline(name, 40);
-    cout << "\nEnter the type of the account (Checkings/Savings): ";
-    cin >> type;
+    while(strlen(name) == 0)
+    {
+        cout << "\nThis field cannot be left empty. Please try again: ";
+        cin.getline(name, 40);
+    }
+
+    cout << "\nEnter the type of the account (Checking/Savings): ";
+    while (!valid_type)
+    {
+        cin >> type;
+        for (int i = 0; type[i]; i++)
+        {
+            type[i] = tolower(type[i]);
+        }
+        if (strcmp(type, "checking") == 0 || strcmp(type, "savings") == 0)
+        {
+            valid_type = true;
+        }
+        else
+        {
+            cout << "\nInvalid account type. Please enter either (Checking or Savings): ";
+        }
+    }
+
     cout << "\nEnter a pin for your account {5 digits}: ";
     cin >> pin;
-    cout << "\nEnter a deposit: ";
+    while((pin < 10000) || (pin > 99999))
+    {
+        cout << "\nInvalid pin, please try again: ";
+        cin >> pin;
+    }
+
+    cout << "\nEnter a deposit. (A minimum of $100 must be placed in in order to keep an account open.) : $";
     cin >> balance;
+    while((balance < 100))
+    {
+        cout << "\nInvalid amount, please try again: ";
+        cin >> balance;
+    }
+
     cout << "\n For recovery purposes, please answer the following questions:";
     cout << "\n What city were you born in? :";
     cin.ignore();
     cin.getline(answer1, 40);
+    while(strlen(answer1) == 0)
+    {
+        cout << "\nThis field cannot be left empty. Please try again: ";
+        cin.getline(answer1, 40);
+    }
     cout << "\nWhat is the last name of your favorite elementary school teacher? :";
     cin.getline(answer2,40);
+    while(strlen(answer2) == 0)
+    {
+        cout << "\nThis field cannot be left empty. Please try again: ";
+        cin.getline(answer2, 40);
+    }
     cout << "\nWhat was the first film you watched in theaters? :";
     cin.getline(answer3,40);
+    while(strlen(answer3) == 0)
+    {
+        cout << "\nThis field cannot be left empty. Please try again: ";
+        cin.getline(answer3, 40);
+    }
     cout << "\n Account was created successfully.";
 }
 
@@ -85,6 +137,12 @@ void Bank::modify_account()
 {
     cout << "Enter a new pin for your account {5 digits}: ";
     cin >> pin;
+    while((pin < 10000) || (pin > 99999))
+    {
+        cout << "\nInvalid pin, please try again: ";
+        cin >> pin;
+    }
+    cout << "\n Successfully changed pin. (Press enter)";
 }
 
 void Bank::show_account() const
@@ -270,18 +328,28 @@ void account_actions(int n, int option)
             {
                 cout << "\nDepositing Amount." << endl;
                 cout << "Please enter the amount you would like to deposit: $";
-                cin >> amount;
+                while(!(cin >> amount))
+                {
+                    cout << "\n Invalid input type. Please enter again: $";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
                 obj.deposit(amount, 1);
             }
             if (option == 2)
             {
                 cout << "\nWithdrawing Amount." << endl;
-                cout << "Please enter the amount you would like to withdraw: $";
-                cin >> amount;
+                cout << "Please enter the amount you would like to withdraw. (Remember: An Account must have at least $100): $";
+                while(!(cin >> amount))
+                {
+                    cout << "\n Invalid input type. Please enter again: $";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
                 test_balance = obj.return_balance() - amount;
                 if (test_balance < 100)
                 {
-                    cout << "Unable to withdraw. Insufficient amount available. " << endl;
+                    cout << "\nUnable to withdraw. Insufficient amount available. (Press enter) " << endl;
                     return;
                 }
                 else
@@ -349,7 +417,12 @@ void money_transfer(int sender_id)
     }
 
     cout << "How much would you like to send to " << r_obj.name << "? $";
-    cin >> amount;
+    while(!(cin >> amount))
+    {
+        cout << "\n Invalid input type. Please enter again: $";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
     test_balance = s_obj.return_balance() - amount;
     if(test_balance < 100)
     {
@@ -409,22 +482,39 @@ void display_all_accounts()
 
 void sign_in_menu()
 {
+    cout << "\n Welcome to the ATM Management System";
     int choice, account_number, pin, adminac_num;
     string admin_pass;
     do {
-        cout << "\n Welcome to the ATM Management System";
         cout << "\n 1. Sign In";
         cout << "\n 2. Create New Account";
         cout << "\n 3. Recover Account";
         cout << "\n 4. Exit";
         cout << "\n Enter Your Choice : ";
-        cin >> choice;
-        switch (choice) {
+        while(!(cin >> choice))  // https://stackoverflow.com/questions/28380421/what-happens-if-we-input-a-character-in-a-switch-case-where-an-integer-is-requir
+        {
+            cout << "\n Invalid input type. Please enter again: ";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
+
+        switch (choice)
+        {
             case 1:
-                cout << "Enter your account number: ";
-                cin >> account_number;
+                cout << "Enter your account number: #";
+                while(!(cin >> account_number))
+                {
+                    cout << "\n Invalid input type. Please enter again: #";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
                 cout << "Enter your PIN: ";
-                cin >> pin;
+                while(!(cin >> pin))
+                {
+                    cout << "\n Invalid input type. Please enter again: ";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
                 verify_user(account_number, pin);
                 break;
             case 2:
@@ -438,13 +528,18 @@ void sign_in_menu()
                 exit(0);
             case 33050203:
                 cout << "Please enter your Admin account number: #";
-                cin >> adminac_num;
+                while(!(cin >> adminac_num))
+                {
+                    cout << "\n Invalid input type. Please enter again: #";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                }
                 cout << "Please enter your Admin password: ";
                 cin >> admin_pass;
                 verify_admin(adminac_num, admin_pass);
                 break;
             default:
-                cout << "Error: Invalid input. Try again.";
+                cout << "Invalid choice, please try again. (Press enter)";
         }
         cin.ignore(); // Clear input buffer
         cin.get(); // Wait for user to press enter
@@ -548,7 +643,7 @@ void verify_admin(int admin_n, string admin_p)
     }
     else
     {
-        cout << "Oops... Looks like something went wrong.";
+        cout << "\nIncorrect Credentials. Please try again. (Press enter)";
         return;
     }
 }
@@ -677,7 +772,12 @@ void account_menu(int id)
         cout << "\n 7. Freeze Account";
         cout << "\n 8. Log out";
         cout << "\n Enter Your Choice : ";
-        cin >> choice;
+        while(!(cin >> choice))
+        {
+            cout << "\n Invalid input type. Please enter again: ";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
         switch (choice)
         {
             case 1:
@@ -706,7 +806,7 @@ void account_menu(int id)
                 cout << "Logging out...";
                 sign_in_menu();
             default:
-                cout << "Error: Invalid input. Try again.";
+                cout << "Invalid choice, please try again. (Press enter)";
         }
         cin.ignore(); // Clear input buffer
         cin.get(); // Wait for user to press enter
@@ -723,8 +823,12 @@ void admin_menu()
         cout << "\n 2. View all users";
         cout << "\n 3. Log out";
         cout << "\n Enter your choice:";
-        cin >> choice;
-
+        while(!(cin >> choice))  // https://stackoverflow.com/questions/28380421/what-happens-if-we-input-a-character-in-a-switch-case-where-an-integer-is-requir
+        {
+            cout << "\n Invalid input type. Please enter again: ";
+            cin.clear();
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        }
         switch(choice)
         {
             case 1:
@@ -743,7 +847,7 @@ void admin_menu()
                 display_transaction_logs();
                 break;
             default:
-                cout << "Error: Invalid input. Try again.";
+                cout << "Invalid choice, please try again. (Press enter)";
         }
         cin.ignore(); // Clear input buffer
         cin.get(); // Wait for user to press enter
