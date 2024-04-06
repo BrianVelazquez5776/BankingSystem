@@ -40,11 +40,11 @@ public:
     double amount; // Takes note of the specified about from the user.
 };
 
-void write_transaction_log(int account_number, char transaction_type, float amount) // The reason this function
+void write_transaction_log(int acc_num, char transaction_type, float amount) // The reason this function
 {
     Transaction obj;
     obj.timestamp = time(nullptr); // Returns the current time
-    obj.account_number = account_number;
+    obj.account_number = acc_num;
     obj.transaction_type = transaction_type;
     obj.amount = amount;
 
@@ -162,30 +162,30 @@ void Bank::report() const // This is the format on how data will be displayed in
     cout << setw(15) << left << account_number << setw(20) << name << setw(18) << type << setw(15) << balance << setw(15) << request << setw(15) << frozen << endl;
 }
 
-void Bank::deposit(float n, int option)
+void Bank::deposit(float amt, int option)
 {
-    balance += n;
+    balance += amt;
     if (option == 1) // Option 1 is used for a normal deposit.
     {
-        write_transaction_log(account_number, 'D', n); // This calls the function that was defined above, writes the account number, type and how much.
+        write_transaction_log(account_number, 'D', amt); // This calls the function that was defined above, writes the account number, type and how much.
     }
     else
     {
-        write_transaction_log(account_number, 'R', n); // Same thing as line above just the deposit is relabeled as a transfer type of "Receiving"
+        write_transaction_log(account_number, 'R', amt); // Same thing as line above just the deposit is relabeled as a transfer type of "Receiving"
     }
 
 }
 
-void Bank::withdraw(float n, int option)
+void Bank::withdraw(float amt, int option)
 {
-    balance -= n;
+    balance -= amt;
     if (option == 1) // Fundamentally works the same as the deposit function.
     {
-        write_transaction_log(account_number, 'W', n);
+        write_transaction_log(account_number, 'W', amt);
     }
     else
     {
-        write_transaction_log(account_number, 'S', n); // This time the withdrawal function is relabeled as a transfer type of "Sender"
+        write_transaction_log(account_number, 'S', amt); // This time the withdrawal function is relabeled as a transfer type of "Sender"
     }
 }
 
@@ -236,7 +236,7 @@ void create_account()
     file.close();
 }
 
-void delete_account(int n)
+void delete_account(int account_number)
 {
     bool found_account = false;
     Bank obj;
@@ -252,7 +252,7 @@ void delete_account(int n)
     file.seekg(0, ios::beg); // allows to change the location of the get position of the specific user that needs deletion. The offset is 0 and the position is the offset counted from the beginning of the stream
     while (file.read(reinterpret_cast<char *> (&obj), sizeof(Bank))) // this file.read() reads data from the file into "obj" continues until an error, or it has reached the end of the file.
     {
-        if (obj.return_accountnum() != n) // if account (obj.return_account_num) does not match the given user (n), this means that it is not the account that needs deleting so it writes that data in the temp file. Once it matches with the given user, it will omit that data and set the flag to true.
+        if (obj.return_accountnum() != account_number) // if account (obj.return_account_num) does not match the given user (n), this means that it is not the account that needs deleting so it writes that data in the temp file. Once it matches with the given user, it will omit that data and set the flag to true.
         {
             file2.write(reinterpret_cast<char *> (&obj), sizeof(Bank));
         }
@@ -275,7 +275,7 @@ void delete_account(int n)
     }
 }
 
-void display_account(int n)
+void display_account(int account_number)
 {
     Bank obj;
     bool flag = false;
@@ -290,7 +290,7 @@ void display_account(int n)
     cout << "\n |-- Account Details --|";
     while (file.read(reinterpret_cast<char *> (&obj), sizeof(Bank))) // Same as the delete_account() function it reads until it can find a matching user.
     {
-        if (obj.return_accountnum() == n) // if the given user's account number matches with existing ones (obj.return_accountnum()) it continues inside the if.
+        if (obj.return_accountnum() == account_number) // if the given user's account number matches with existing ones (obj.return_accountnum()) it continues inside the if.
         {
             obj.show_account(); // calls the function that displays the data of that specific user.
             flag = true; // makes it true in order make an error message
@@ -302,7 +302,7 @@ void display_account(int n)
         cout << "\n |-- Account number was not found. -- |";
     }
 }
-void account_actions(int n, int option)
+void account_actions(int account_number, int option)
 {
     float test_balance, amount;
     bool flag = false;
@@ -317,7 +317,7 @@ void account_actions(int n, int option)
     while (!file.eof() && flag == false) // runs until end of file or if the flag becomes true
     {
         file.read(reinterpret_cast<char *> (&obj), sizeof(Bank)); // reads in order to check if there is matching user
-        if (obj.return_accountnum() == n) // checks if it matches with user
+        if (obj.return_accountnum() == account_number) // checks if it matches with user
         {
             obj.show_account(); // show how much the user currently has
             if (option == 1)
@@ -362,9 +362,9 @@ void account_actions(int n, int option)
     }
 }
 
-void money_transfer(int sender_id)
+void money_transfer(int sender_num)
 {
-    int r_id;
+    int receiver_num;
     float amount, test_balance;
     bool s_flag = false, r_flag = false; // used to check if either sender or receiver account number was found.
     Bank s_obj, r_obj; // two separate options.
@@ -379,7 +379,7 @@ void money_transfer(int sender_id)
     while((!file.eof()) && (s_flag == false))
     {
         file.read(reinterpret_cast<char *> (&s_obj), sizeof(Bank));
-        if(s_obj.return_accountnum() == sender_id) // verifies if the sender exists
+        if(s_obj.return_accountnum() == sender_num) // verifies if the sender exists
         {
             s_obj.show_account(); // Shows the current balance the sending user
             s_flag = true; // breaks the while loop
@@ -394,11 +394,11 @@ void money_transfer(int sender_id)
     }
 
     cout << "\n Please enter the account number of the receiving user: #"; // Similar idea for the receiving user.
-    cin >> r_id;
+    cin >> receiver_num;
     while((!file.eof()) && (r_flag == false))
     {
         file.read(reinterpret_cast<char *> (&r_obj), sizeof(Bank));
-        if (r_obj.return_accountnum() == r_id) // checks if the recieving user exists
+        if (r_obj.return_accountnum() == receiver_num) // checks if the recieving user exists
         {
             cout << "\n Sending to " << r_obj.name << "."; // displays the recieving user's name
             r_flag = true;
@@ -443,7 +443,7 @@ void money_transfer(int sender_id)
     while((!file.eof()) && (s_flag == true))
     {
         file.read(reinterpret_cast<char *> (&s_obj), sizeof(Bank));
-        if(s_obj.return_accountnum() == sender_id)
+        if(s_obj.return_accountnum() == sender_num)
         {
             s_obj.withdraw(amount,2);
             int s_position = (-1) * static_cast<int>(sizeof(s_obj));
@@ -454,8 +454,6 @@ void money_transfer(int sender_id)
     file.close();
 
 }
-
-
 
 void display_all_accounts()
 {
@@ -481,7 +479,7 @@ void display_all_accounts()
 
 void sign_in_menu()
 {
-    int choice, account_number, pin, adminac_num;
+    int choice, acc_num, pin, adminac_num;
     string admin_pass;
     do // a do-while loop is done that way the list option are always shown and the user does not have to scroll up in the console
     {
@@ -501,7 +499,7 @@ void sign_in_menu()
         {
             case 1:
                 cout << "\n Enter your account number: #";
-                while(!(cin >> account_number)) // checks input
+                while(!(cin >> acc_num)) // checks input
                 {
                     cout << "\n Invalid input type. Please enter again: #";
                     cin.clear();
@@ -514,7 +512,7 @@ void sign_in_menu()
                     cin.clear();
                     cin.ignore(numeric_limits<streamsize>::max(), '\n');
                 }
-                verify_user(account_number, pin); // verifies the user
+                verify_user(acc_num, pin); // verifies the user
                 break;
             case 2:
                 create_account(); // calls the account creator
@@ -545,7 +543,7 @@ void sign_in_menu()
     } while (choice != 4);
 }
 
-void verify_user(int ac_num, int pin)
+void verify_user(int account_number, int pin)
 {
     Bank obj;
     ifstream file;
@@ -558,10 +556,10 @@ void verify_user(int ac_num, int pin)
     }
     while (file.read(reinterpret_cast<char *> (&obj), sizeof(Bank)))
     {
-        if ((obj.return_accountnum() == ac_num) && (obj.return_pin() == pin) && (obj.return_frozen() == 'N')) // sees if the account number, pin, and if the account is not frozen.
+        if ((obj.return_accountnum() == account_number) && (obj.return_pin() == pin) && (obj.return_frozen() == 'N')) // sees if the account number, pin, and if the account is not frozen.
         {
             cout << "\n Hello " << obj.name << "! Please select one of the following."; // greets the user if successful
-            account_menu(ac_num); // calls the account menu
+            account_menu(account_number); // calls the account menu
             flag = true; // indicates that was successful verification
 
         }
@@ -574,7 +572,7 @@ void verify_user(int ac_num, int pin)
 
 }
 
-void request_account_deletion(int id)
+void request_account_deletion(int account_number)
 {
     Bank obj;
     fstream file;
@@ -588,7 +586,7 @@ void request_account_deletion(int id)
     cout << "\nPlease note that your account will be put on hold for 30 days before deletion.";
     while (file.read(reinterpret_cast<char *>(&obj), sizeof(Bank))) {
 
-        if (obj.return_accountnum() == id)
+        if (obj.return_accountnum() == account_number)
         {
             obj.request = 'Y'; // Update the request variable
             int position = (-1) * static_cast<int>(sizeof(obj));
@@ -605,7 +603,7 @@ void request_account_deletion(int id)
     }
 }
 
-void account_suspension(int id)
+void account_suspension(int account_number)
 {
     Bank obj;
     fstream file;
@@ -620,7 +618,7 @@ void account_suspension(int id)
     while (file.read(reinterpret_cast<char *>(&obj), sizeof(Bank)))
     {
 
-        if (obj.return_accountnum() == id)
+        if (obj.return_accountnum() == account_number)
         {
             obj.frozen = 'Y'; // Update the request variable
             int position = (-1) * static_cast<int>(sizeof(obj));
@@ -637,9 +635,9 @@ void account_suspension(int id)
     }
 }
 
-void verify_admin(int admin_n, string admin_p)
+void verify_admin(int admin_num, string admin_pin)
 {
-    if((admin_n == 33050203) && (admin_p == "@dm1n!")) // specific credentials for the admin user to match.
+    if((admin_num == 33050203) && (admin_pin == "@dm1n!")) // specific credentials for the admin user to match.
     {
         admin_menu(); // if successful, will call account menu
     }
@@ -692,7 +690,7 @@ bool verify_recovery(const Bank& obj)
 
 void recover_account()
 {
-    int ac_num;
+    int account_number;
     bool flag = false;
     Bank obj;
     fstream file;
@@ -703,10 +701,10 @@ void recover_account()
     }
 
     cout << "\n Please enter your account number: #";
-    cin >> ac_num;
+    cin >> account_number;
     while (file.read(reinterpret_cast<char *>(&obj), sizeof(Bank)))
     {
-        if (obj.return_accountnum() == ac_num)
+        if (obj.return_accountnum() == account_number)
         {
             flag = true;
             cout << "\n Answer the security questions to recover your account:" << endl;
@@ -751,7 +749,7 @@ void display_transaction_logs(int account_number = -1) // account_number here is
                 cout << put_time(localtime(&obj.timestamp), "%Y-%m-%d %H:%M:%S") << setw(5) << " " << obj.account_number << setw(5) << " " << obj.transaction_type; //put_time uses that time(nullptr) that we made and a specific format inorder to print the time stamp.
                 if (obj.transaction_type == 'W' || obj.transaction_type == 'S')
                 {
-                    cout << setw(5) << " -" << "$" << obj.amount << endl; // Add subtraction symbol for withdrawal case
+                    cout << setw(5) << "-" << "$" << obj.amount << endl; // Add subtraction symbol for withdrawal case
                 }
                 else
                 {
@@ -780,7 +778,7 @@ void display_transaction_logs(int account_number = -1) // account_number here is
     }
 }
 
-void account_menu(int id)
+void account_menu(int acc_num)
 {
     int choice;
     do // a do-while loop is done that way the list option are always shown and the user does not have to scroll up in the console
@@ -803,26 +801,26 @@ void account_menu(int id)
         switch (choice)
         {
             case 1:
-                display_account(id);
+                display_account(acc_num);
                 break;
             case 2:
-                account_actions(id, 1);
+                account_actions(acc_num, 1);
                 break;
             case 3:
-                account_actions(id, 2);
+                account_actions(acc_num, 2);
                 break;
             case 4:
-                money_transfer(id);
+                money_transfer(acc_num);
                 break;
             case 5:
-                display_transaction_logs(id);
+                display_transaction_logs(acc_num);
                 break;
             case 6:
-                request_account_deletion(id);
+                request_account_deletion(acc_num);
                 sign_in_menu();
                 break;
             case 7:
-                account_suspension(id);
+                account_suspension(acc_num);
                 break;
             case 8:
                 cout << "\n Logging out..." << endl;
@@ -838,7 +836,7 @@ void account_menu(int id)
 void admin_menu()
 {
     cout << "\n Welcome to the Admin menu.";
-    int choice, ac_num;
+    int choice, acc_num;
     do // a do-while loop is done that way the list option are always shown and the user does not have to scroll up in the console
     {
         cout << "\n 1. Delete a user account";
@@ -856,8 +854,8 @@ void admin_menu()
         {
             case 1:
                 cout << "\n Please enter the user's account number: #";
-                cin >> ac_num;
-                delete_account(ac_num);
+                cin >> acc_num;
+                delete_account(acc_num);
                 break;
             case 2:
                 display_all_accounts();
