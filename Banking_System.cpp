@@ -399,7 +399,6 @@
 
         file.close();
         file.open("database.dat", ios::binary | ios::in | ios::out);
-        file.seekg(0, ios::beg);
         cout << "\n Please enter the account number of the receiving user: #"; // Similar idea for the receiving user.
         cin >> receiver_num;
         while((!file.eof()) && (r_flag == false))
