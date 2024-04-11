@@ -107,8 +107,12 @@
         cin >> balance;
         while((balance < 100) || (balance > 100000)) // This while ensures that a valid deposit was made.
         {
-            cout << "\n Invalid amount, please try again: $";
-            cin >> balance;
+            while(!(cin >> balance)) // While loops to ensure valid type
+            {
+                cout << "\n Invalid input type. Please enter again: $";
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n'); // same as the other one
+            }
         }
 
         cout << "\n For recovery purposes, please answer the following questions:";
@@ -393,11 +397,14 @@
             return;
         }
 
+        file.close();
+        file.open("database.dat", ios::binary | ios::in | ios::out);
+        file.seekg(0, ios::beg);
         cout << "\n Please enter the account number of the receiving user: #"; // Similar idea for the receiving user.
         cin >> receiver_num;
         while((!file.eof()) && (r_flag == false))
         {
-            file.read(reinterpret_cast<char *> (&r_obj), sizeof(Bank));
+            file.read(reinterpret_cast<char *>(&r_obj), sizeof(Bank));
             if (r_obj.return_accountnum() == receiver_num) // checks if the recieving user exists
             {
                 cout << "\n Sending to " << r_obj.name << "."; // displays the recieving user's name
@@ -412,7 +419,7 @@
             return;
         }
 
-        cout << "How much would you like to send to " << r_obj.name << "? $";
+        cout << " How much would you like to send to " << r_obj.name << "? $";
         while(!(cin >> amount)) // While loop to ensure valid input
         {
             cout << "\n Invalid input type. Please enter again: $";
@@ -449,6 +456,7 @@
                 int s_position = (-1) * static_cast<int>(sizeof(s_obj));
                 file.seekp(s_position, ios::cur);
                 file.write(reinterpret_cast<char *> (&s_obj), sizeof(Bank));
+                break;
             }
         }
         file.close();
@@ -749,7 +757,7 @@
                     cout << put_time(localtime(&obj.timestamp), "%Y-%m-%d %H:%M:%S") << setw(5) << " " << obj.account_number << setw(5) << " " << obj.transaction_type; //put_time uses that time(nullptr) that we made and a specific format inorder to print the time stamp.
                     if (obj.transaction_type == 'W' || obj.transaction_type == 'S')
                     {
-                        cout << setw(5) << "-" << "$" << obj.amount << endl; // Add subtraction symbol for withdrawal case
+                        cout << setw(5) << " -" << "$" << obj.amount << endl; // Add subtraction symbol for withdrawal case
                     }
                     else
                     {
@@ -821,6 +829,7 @@
                     break;
                 case 7:
                     account_suspension(acc_num);
+                    main_menu();
                     break;
                 case 8:
                     cout << "\n Logging out..." << endl;
